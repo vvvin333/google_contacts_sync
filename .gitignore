@@ -1,0 +1,8 @@
+*.ipynb
+*creds
+__pycache__
+conf
+.vscode
+.idea
+.venv
+.DS_Store
