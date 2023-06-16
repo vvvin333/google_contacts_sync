@@ -1,8 +1,9 @@
 # -*- coding: utf-8 -*-
-
+import json
 import os
 import flask
 import requests
+from google.auth.exceptions import RefreshError
 
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import Flow
@@ -19,8 +20,10 @@ API_SERVICE_NAME = "people"
 API_RESOURCE_ME = API_SERVICE_NAME + "/me"
 API_VERSION = "v1"
 
+USER_CREDENTIALS_FILE = "conf/user_creds.json"
+
 app = flask.Flask(__name__)
-# from CLIENT_SECRETS_FILE
+# some real App secret
 app.secret_key = "bla-bla"
 
 
@@ -31,24 +34,29 @@ def index():
 
 @app.route("/test")
 def test_api_request():
-    print("!!!!!", flask.session)
-    if "credentials" not in flask.session:
+    # If we have no user credentials so far,
+    # initiate authorization flow.
+    # TODO: In a production app, you likely want to save these
+    #  credentials in a persistent database instead.
+    if not os.path.exists(USER_CREDENTIALS_FILE):
         return flask.redirect("authorize")
 
-    # Load credentials from the session.
-    credentials = Credentials(**flask.session["credentials"])
+    # Load user credentials.
+    credentials: Credentials = Credentials.from_authorized_user_file(
+        USER_CREDENTIALS_FILE,
+        SCOPES,
+    )
+
     service: Resource = build(API_SERVICE_NAME, API_VERSION, credentials=credentials)
-
-    # Call the People API
-    results = service.people().connections().list(
-        resourceName=API_RESOURCE_ME,
-        personFields="names,emailAddresses"
-    ).execute()
-
-    # Save credentials back to session in case access token was refreshed.
-    # TODO: In a production app, you likely want to save these
-    #              credentials in a persistent database instead.
-    flask.session["credentials"] = credentials_to_dict(credentials)
+    try:
+        # Call the People API
+        results = service.people().connections().list(
+            resourceName=API_RESOURCE_ME,
+            personFields="names,emailAddresses"
+        ).execute()
+    except RefreshError:
+        # TODO: Check if credentials expired and refresh them.
+        return flask.redirect("clear")
 
     return flask.jsonify(**results)
 
@@ -65,9 +73,11 @@ def authorize():
     flow.redirect_uri = flask.url_for("oauth2callback", _external=True)
 
     authorization_url, state = flow.authorization_url(
-        # Enable offline access so that you can refresh an access token without
-        # re-prompting the user for permission. Recommended for web server apps.
+        # TODO: Enable offline access so that you can refresh an access token without
+        #  re-prompting the user for permission. Recommended for web server apps.
         access_type="offline",
+        # Force the user to re-prompt permission.
+        prompt="consent",
         # Enable incremental authorization. Recommended as a best practice.
         include_granted_scopes="true",
     )
@@ -84,6 +94,7 @@ def oauth2callback():
     # be verified in the authorization server response.
     state = flask.session["state"]
 
+    # Set flow with app (client) secret credentials
     flow = Flow.from_client_secrets_file(
         CLIENT_SECRETS_FILE, scopes=SCOPES, state=state
     )
@@ -93,28 +104,37 @@ def oauth2callback():
     authorization_response = flask.request.url
     flow.fetch_token(authorization_response=authorization_response)
 
-    # Store credentials in the session.
+    # Store credentials.
     # TODO: In a production app, you likely want to save these
     #              credentials in a persistent database instead.
     credentials = flow.credentials
     flask.session["credentials"] = credentials_to_dict(credentials)
 
-    return flask.redirect(flask.url_for("test_api_request"))
+    with open(USER_CREDENTIALS_FILE, "w") as creds_file:
+        json.dump(creds_dict, creds_file)
+
+    return "Authorization successful." + print_index_table()
 
 
 @app.route("/revoke")
 def revoke():
-    if "credentials" not in flask.session:
+    # TODO: In a production app, you likely want to save these
+    #  credentials in a persistent database instead.
+    if not os.path.exists(USER_CREDENTIALS_FILE):
         return ("You need to <a href='/authorize'>authorize</a> before " +
                 "testing the code to revoke credentials.")
 
-    credentials = Credentials(**flask.session["credentials"])
+    credentials: Credentials = Credentials.from_authorized_user_file(
+        USER_CREDENTIALS_FILE, SCOPES
+    )
 
     revoke_response = requests.post(
         "https://oauth2.googleapis.com/revoke",
         params={"token": credentials.token},
-        headers={"content-type": "application/x-www-form-urlencoded"}
+        headers={"content-type": "application/x-www-form-urlencoded"},
     )
+
+    clear_credentials()
 
     status_code = getattr(revoke_response, "status_code")
     if status_code == 200:
@@ -123,20 +143,14 @@ def revoke():
         return "An error occurred." + print_index_table()
 
 
-@app.route("/clear")
 def clear_credentials():
     # TODO: In a production app, you likely want to save these
-    #  credentials in a persistent database instead of session.
-    if "credentials" in flask.session:
-        del flask.session["credentials"]
-        print(flask.session)
-    return (
-        "Credentials have been cleared.<br><br>" +
-        print_index_table()
-    )
+    #  credentials in a persistent database instead.
+    if os.path.exists(USER_CREDENTIALS_FILE):
+        os.remove(USER_CREDENTIALS_FILE)
 
 
-def credentials_to_dict(credentials: Credentials):
+def credentials_to_dict(credentials: Credentials) -> dict[str, str]:
     return {
         "token": credentials.token,
         "refresh_token": credentials.refresh_token,
@@ -144,29 +158,25 @@ def credentials_to_dict(credentials: Credentials):
         "client_id": credentials.client_id,
         "client_secret": credentials.client_secret,
         "scopes": credentials.scopes,
+        "expiry": credentials.expiry.isoformat(),
     }
 
 
 def print_index_table():
-    return ("<table>" +
-            "<tr><td><a href='/test'>Test an API request</a></td>" +
-            "<td>Submit an API request and see a formatted JSON response. " +
-            "    Go through the authorization flow if there are no stored " +
-            "    credentials for the user.</td></tr>" +
-            "<tr><td><a href='/authorize'>Test the auth flow directly</a></td>" +
-            "<td>Go directly to the authorization flow. If there are stored " +
-            "    credentials, you still might not be prompted to reauthorize " +
-            "    the application.</td></tr>" +
-            "<tr><td><a href='/revoke'>Revoke current credentials</a></td>" +
-            "<td>Revoke the access token associated with the current user " +
-            "    session. After revoking credentials, if you go to the test " +
-            "    page, you should see an <code>invalid_grant</code> error." +
-            "</td></tr>" +
-            "<tr><td><a href='/clear'>Clear Flask session credentials</a></td>" +
-            "<td>Clear the access token currently stored in the user session. " +
-            "    After clearing the token, if you <a href='/test'>test the " +
-            "    API request</a> again, you should go back to the auth flow." +
-            "</td></tr></table>")
+    return (
+        "<table>" +
+        "<tr><td><a href='/test'>Test an API request</a></td>" +
+        "<td>Submit an API request and see a formatted JSON response. " +
+        "    Go through the authorization flow if there are no stored " +
+        "    credentials for the user.</td></tr>" +
+        "<tr><td><a href='/authorize'>Test the auth flow directly</a></td>" +
+        "<td>Go directly to the authorization flow.</td></tr>" +
+        "<tr><td><a href='/revoke'>Revoke current credentials</a></td>" +
+        "<td>Revoke the access token associated with the current user. " +
+        "    Clear the access token currently stored. " +
+        "    After revoking credentials, you need to reauthorize." +
+        "</td></tr></table>"
+    )
 
 
 if __name__ == "__main__":
