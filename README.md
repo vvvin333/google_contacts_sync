@@ -1,10 +1,22 @@
+# Quickstart
+Run quickstart to list 10 connection names for the user account
+   ```
+   python quickstart.py
+   ```
+
+# Test API
+Run test API to go through auth flow
+   ```
+   python api.py
+   ```
+
 # Google Contacts Sync
 
 Sync the contacts of a bunch of google accounts using the People API.
 
 Groups are not synced, just individual contacts.
 
-# Setup
+## Setup
 
 1. [Create a Google Cloud Platform project and enable the people API](https://developers.google.com/workspace/guides/create-project).
 
@@ -79,4 +91,3 @@ Groups are not synced, just individual contacts.
    accounts.  So you can change peoples names if you want and syncing will just
    work because the `csync-uid` is used to identify people.  If you ever add
    another account you will have to run the --init again.  
-
