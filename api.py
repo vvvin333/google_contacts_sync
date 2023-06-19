@@ -56,7 +56,7 @@ def test_api_request():
         ).execute()
     except RefreshError:
         # TODO: Check if credentials expired and refresh them.
-        return flask.redirect("clear")
+        return flask.redirect("revoke")
 
     return flask.jsonify(**results)
 
