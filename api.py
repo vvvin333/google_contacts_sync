@@ -108,7 +108,7 @@ def oauth2callback():
     # TODO: In a production app, you likely want to save these
     #              credentials in a persistent database instead.
     credentials = flow.credentials
-    flask.session["credentials"] = credentials_to_dict(credentials)
+    creds_dict = credentials_to_dict(credentials)
 
     with open(USER_CREDENTIALS_FILE, "w") as creds_file:
         json.dump(creds_dict, creds_file)
