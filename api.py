@@ -143,6 +143,23 @@ def revoke():
         return "An error occurred." + print_index_table()
 
 
+def print_index_table():
+    return (
+        "<table>" +
+        "<tr><td><a href='/test'>Test an API request</a></td>" +
+        "<td>Submit an API request and see a formatted JSON response. " +
+        "    Go through the authorization flow if there are no stored " +
+        "    credentials for the user.</td></tr>" +
+        "<tr><td><a href='/authorize'>Test the auth flow directly</a></td>" +
+        "<td>Go directly to the authorization flow.</td></tr>" +
+        "<tr><td><a href='/revoke'>Revoke current credentials</a></td>" +
+        "<td>Revoke the access token associated with the current user. " +
+        "    Clear the access token currently stored. " +
+        "    After revoking credentials, you need to reauthorize." +
+        "</td></tr></table>"
+    )
+
+
 def clear_credentials():
     # TODO: In a production app, you likely want to save these
     #  credentials in a persistent database instead.
@@ -160,23 +177,6 @@ def credentials_to_dict(credentials: Credentials) -> dict[str, str]:
         "scopes": credentials.scopes,
         "expiry": credentials.expiry.isoformat(),
     }
-
-
-def print_index_table():
-    return (
-        "<table>" +
-        "<tr><td><a href='/test'>Test an API request</a></td>" +
-        "<td>Submit an API request and see a formatted JSON response. " +
-        "    Go through the authorization flow if there are no stored " +
-        "    credentials for the user.</td></tr>" +
-        "<tr><td><a href='/authorize'>Test the auth flow directly</a></td>" +
-        "<td>Go directly to the authorization flow.</td></tr>" +
-        "<tr><td><a href='/revoke'>Revoke current credentials</a></td>" +
-        "<td>Revoke the access token associated with the current user. " +
-        "    Clear the access token currently stored. " +
-        "    After revoking credentials, you need to reauthorize." +
-        "</td></tr></table>"
-    )
 
 
 if __name__ == "__main__":

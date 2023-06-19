@@ -1,5 +1,3 @@
-# from __future__ import print_function
-
 import os.path
 
 from google.auth.transport.requests import Request
@@ -9,7 +7,7 @@ from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 
 # If modifying these scopes, delete the file token.json.
-SCOPES = ['https://www.googleapis.com/auth/contacts.readonly']
+SCOPES = ["https://www.googleapis.com/auth/contacts.readonly"]
 
 
 def main():
@@ -20,9 +18,9 @@ def main():
     # The file token.json stores the user's access and refresh tokens, and is
     # created automatically when the authorization flow completes for the first
     # time.
-    if os.path.exists('conf/token_test.json'):
+    if os.path.exists("conf/token_test.json"):
         creds: Credentials = Credentials.from_authorized_user_file(
-            'conf/token_test.json',
+            "conf/token_test.json",
             SCOPES
         )
 
@@ -33,32 +31,32 @@ def main():
         else:
             # If there are no (valid) credentials available, let the user log in.
             flow = InstalledAppFlow.from_client_secrets_file(
-                'conf/client_credentials_test.json', SCOPES)
+                "conf/client_credentials_test.json", SCOPES)
             creds = flow.run_local_server(port=0)
         # Save the credentials for the next run
 
-        with open('conf/token_test.json', 'w') as token:
+        with open("conf/token_test.json", "w") as token:
             token.write(creds.to_json())
 
     try:
-        service = build('people', 'v1', credentials=creds)
+        service = build("people", "v1", credentials=creds)
 
         # Call the People API
-        print('List 10 connection names')
+        print("List 10 connection names")
         results = service.people().connections().list(
-            resourceName='people/me',
+            resourceName="people/me",
             pageSize=10,
-            personFields='names,emailAddresses').execute()
-        connections = results.get('connections', [])
+            personFields="names,emailAddresses").execute()
+        connections = results.get("connections", [])
 
         for person in connections:
-            names = person.get('names', [])
+            names = person.get("names", [])
             if names:
-                name = names[0].get('displayName')
+                name = names[0].get("displayName")
                 print(name)
     except HttpError as err:
         print(err)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
