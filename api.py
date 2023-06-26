@@ -42,10 +42,15 @@ def test_api_request():
         return flask.redirect("authorize")
 
     # Load user credentials.
+    # with user_creds file:
     credentials: Credentials = Credentials.from_authorized_user_file(
         USER_CREDENTIALS_FILE,
         SCOPES,
     )
+    # or just with access_token:
+    # with open(USER_CREDENTIALS_FILE, "r") as creds_file:
+    #     user_data = json.load(creds_file)
+    #     credentials: Credentials = Credentials(user_data.get("token"))
 
     service: Resource = build(API_SERVICE_NAME, API_VERSION, credentials=credentials)
     try:
