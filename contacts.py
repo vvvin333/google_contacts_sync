@@ -53,7 +53,7 @@ all_person_fields = [
     "sipAddresses",
     "skills",
     "urls",
-    "userDefined"
+    "userDefined",
 ]
 all_update_person_fields = [
     "addresses",
@@ -78,7 +78,7 @@ all_update_person_fields = [
     "relations",
     "sipAddresses",
     "urls",
-    "userDefined"
+    "userDefined",
 ]
 
 

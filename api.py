@@ -57,7 +57,8 @@ def test_api_request():
         # Call the People API
         results = service.people().connections().list(
             resourceName=API_RESOURCE_ME,
-            personFields="names,emailAddresses"
+            personFields="addresses,birthdays,photos,locations,names,"
+                         "emailAddresses,organizations,phoneNumbers"
         ).execute()
     except RefreshError:
         # TODO: Check if credentials expired and refresh them.
